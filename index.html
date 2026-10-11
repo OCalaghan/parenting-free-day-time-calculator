@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Compteur de garde</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=Instrument+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: une colonne étroite, deux compteurs en tête, puis les jours du mois avec un sélecteur Bruce / Caroline par ligne. */
+:root {
+  color-scheme: light;
+  --bg: #f1f4f8;
+  --surface: #ffffff;
+  --fg: #18212c;
+  --muted: #5a6677;
+  --line: #dce2ea;
+  --bruce: #1d6e8c;
+  --on-bruce: #ffffff;
+  --caroline: #b0446a;
+  --on-caroline: #ffffff;
+  --warn: #9a5b00;
+  --warn-bg: #fdf0d8;
+  --chip: #e8edf3;
+  --off: #e6ebf3;
+  --school: #d9efdf;
+  --focus: #1d6e8c;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161d;
+    --surface: #1a212b;
+    --fg: #e8edf4;
+    --muted: #9aa6b7;
+    --line: #2b3441;
+    --bruce: #5bb4d2;
+    --on-bruce: #0c1a21;
+    --caroline: #e68aa9;
+    --on-caroline: #2a0f19;
+    --warn: #f0c070;
+    --warn-bg: #3a2c12;
+    --chip: #262f3b;
+    --off: #28323f;
+    --school: #1f3a28;
+    --focus: #5bb4d2;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161d;
+  --surface: #1a212b;
+  --fg: #e8edf4;
+  --muted: #9aa6b7;
+  --line: #2b3441;
+  --bruce: #5bb4d2;
+  --on-bruce: #0c1a21;
+  --caroline: #e68aa9;
+  --on-caroline: #2a0f19;
+  --warn: #f0c070;
+  --warn-bg: #3a2c12;
+  --chip: #262f3b;
+  --off: #28323f;
+  --school: #1f3a28;
+  --focus: #5bb4d2;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.45;
+  padding-inline: 16px;
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 600px; margin-inline: auto; display: flex; flex-direction: column; gap: 16px; }
+h1 { font-family: var(--font-display); font-weight: 800; font-size: 1.7rem; line-height: 1.1; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 4px 0 0; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: .8rem; color: var(--muted); margin-top: 8px; }
+.status i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: inline-block; }
+.status.on i { background: #2f9e62; }
+.status.off i { background: var(--warn); }
+.banner { background: var(--warn-bg); color: var(--warn); border-radius: 8px; padding: 10px 12px; font-size: .9rem; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.banner.info { background: var(--chip); color: var(--fg); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.counters { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.who { min-width: 0; }
+.who + .who { border-left: 1px solid var(--line); padding-left: 16px; }
+.who-name { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.sw.b { background: var(--bruce); }
+.sw.c { background: var(--caroline); }
+.big { font-family: var(--font-display); font-weight: 800; font-size: 3.4rem; line-height: 1; font-variant-numeric: tabular-nums; margin-top: 6px; }
+.unit { color: var(--muted); font-size: .85rem; }
+.bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; background: var(--chip); }
+.bar span { display: block; height: 100%; transition: width .3s; }
+.bar .b { background: var(--bruce); }
+.bar .c { background: var(--caroline); }
+.meta { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: .85rem; color: var(--muted); }
+
+.nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.nav h2 { font-family: var(--font-display); font-size: 1.25rem; font-weight: 600; margin: 0; text-align: center; flex: 1; min-width: 0; text-transform: capitalize; }
+.nav button { font: inherit; width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--fg); cursor: pointer; font-size: 1.1rem; }
+.nav button:disabled { opacity: .35; cursor: default; }
+.monthstat { text-align: center; color: var(--muted); font-size: .85rem; margin-top: 4px; }
+button:focus-visible, input:focus-visible, summary:focus-visible, textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .85rem; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 14px; border-radius: 4px; border: 1px solid var(--line); display: inline-block; }
+.legend .s { background: var(--school); }
+.legend .o { background: var(--off); }
+
+.list { display: flex; flex-direction: column; gap: 6px; }
+.row { display: grid; grid-template-columns: 56px minmax(0, 1fr) auto; gap: 8px 12px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; background: var(--surface); }
+.row.off { background: var(--off); }
+.row.school { background: var(--school); }
+.row.today { border-color: var(--fg); }
+.date { line-height: 1.1; }
+.date small { display: block; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.date b { font-family: var(--font-display); font-size: 1.4rem; font-variant-numeric: tabular-nums; }
+.info { min-width: 0; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { background: var(--chip); border-radius: 6px; padding: 2px 8px; font-size: .78rem; font-weight: 500; }
+.chip.warn { background: var(--warn-bg); color: var(--warn); }
+.chip.now { background: var(--fg); color: var(--bg); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--line); border-radius: 9px; overflow: hidden; }
+.seg button { font: inherit; font-weight: 600; font-size: .9rem; border: none; background: var(--surface); color: var(--fg); padding: 9px 14px; min-width: 96px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button.b[aria-pressed="true"] { background: var(--bruce); color: var(--on-bruce); }
+.seg button.c[aria-pressed="true"] { background: var(--caroline); color: var(--on-caroline); }
+.seg button:disabled { cursor: default; opacity: .6; }
+.empty { color: var(--muted); text-align: center; padding: 28px 8px; }
+
+.setup h2, .share h2 { font-family: var(--font-display); font-size: 1.15rem; margin: 0; }
+.setup ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+.setup p, .share p { margin: 0; color: var(--muted); }
+textarea, input[type="text"], input[type="url"] { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; min-width: 0; }
+textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8rem; height: 190px; resize: vertical; }
+.row2 { display: flex; gap: 8px; flex-wrap: wrap; }
+.row2 > input { flex: 1; min-width: 200px; }
+.btn { font: inherit; font-weight: 600; background: var(--fg); color: var(--bg); border: none; border-radius: 9px; padding: 9px 16px; cursor: pointer; }
+.btn.alt { background: var(--chip); color: var(--fg); }
+.btn:disabled { opacity: .5; cursor: default; }
+.err { color: var(--warn); font-size: .9rem; }
+details.share { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+details.share summary { font-weight: 600; cursor: pointer; }
+details.share .in { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.linkbtn { font: inherit; font-size: .8rem; color: var(--muted); background: none; border: none; text-decoration: underline; cursor: pointer; padding: 4px 0; align-self: flex-start; }
+
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--fg); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: .9rem; max-width: calc(100% - 32px); z-index: 10; }
+
+@media (max-width: 520px) {
+  .row { grid-template-columns: 52px minmax(0, 1fr); }
+  .seg { grid-column: 1 / -1; }
+  .big { font-size: 2.8rem; }
+}
+@media (prefers-reduced-motion: reduce) { .bar span { transition: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Compteur de garde</h1>
+    <p class="sub">365 jours, du 1er janvier au 31 décembre 2026</p>
+    <span class="status" id="status"><i></i><span id="statusText">Non configuré</span></span>
+  </header>
+
+  <div class="banner" id="banner" hidden></div>
+  <div class="banner info" id="seedBox" hidden>
+    <span id="seedText"></span>
+    <button class="btn" id="seedBtn" type="button">Importer</button>
+  </div>
+
+  <section class="panel setup" id="setup" hidden>
+    <h2>Configuration, une seule fois</h2>
+    <p>Les coches sont enregistrées dans une base de données gratuite Firebase que vous créez. Comptez cinq minutes.</p>
+    <ol>
+      <li>Allez sur <b>console.firebase.google.com</b>, connectez-vous avec un compte Google et créez un projet (vous pouvez désactiver Google Analytics).</li>
+      <li>Dans le menu <b>Build</b>, ouvrez <b>Realtime Database</b>, cliquez sur <b>Créer une base de données</b>, choisissez un emplacement en Europe, puis le mode verrouillé.</li>
+      <li>Ouvrez l’onglet <b>Règles</b>, remplacez tout le contenu par le texte ci-dessous, puis cliquez sur <b>Publier</b>.</li>
+    </ol>
+    <textarea id="rules" readonly aria-label="Règles à coller dans Firebase"></textarea>
+    <div class="row2"><button class="btn alt" id="copyRules" type="button">Copier les règles</button></div>
+    <ol start="4">
+      <li>Dans l’onglet <b>Données</b>, copiez l’adresse qui commence par <b>https://</b> et se termine par <b>firebasedatabase.app</b>, puis collez-la ici.</li>
+    </ol>
+    <div class="row2">
+      <input id="dbUrl" type="url" inputmode="url" autocomplete="off" placeholder="https://mon-projet-default-rtdb.europe-west1.firebasedatabase.app">
+      <button class="btn" id="saveCfg" type="button">Enregistrer</button>
+    </div>
+    <div class="err" id="setupErr" hidden></div>
+  </section>
+
+  <main id="app" hidden>
+    <div class="wrap">
+      <section class="panel" aria-label="Compteurs">
+        <div class="counters">
+          <div class="who">
+            <div class="who-name"><span class="sw b"></span>Bruce</div>
+            <div class="big" id="nB">–</div>
+            <div class="unit">jours</div>
+          </div>
+          <div class="who">
+            <div class="who-name"><span class="sw c"></span>Caroline</div>
+            <div class="big" id="nC">–</div>
+            <div class="unit">jours</div>
+          </div>
+        </div>
+        <div class="bar" id="bar" role="img" aria-label="Répartition des jours entre Bruce et Caroline"><span class="b" style="width:0"></span><span class="c" style="width:0"></span></div>
+        <div class="meta"><span id="diff"></span><span id="todo"></span></div>
+      </section>
+
+      <div>
+        <div class="nav">
+          <button id="prev" type="button" aria-label="Mois précédent">‹</button>
+          <h2 id="monthLabel"></h2>
+          <button id="next" type="button" aria-label="Mois suivant">›</button>
+        </div>
+        <div class="monthstat" id="monthStat"></div>
+      </div>
+
+      <div class="legend" aria-label="Légende des couleurs">
+        <span><i class="s"></i>Jour d’école (Vaud)</span>
+        <span><i class="o"></i>Week-end, férié ou vacances</span>
+      </div>
+
+      <div class="list" id="list"></div>
+
+      <details class="share" id="shareBox">
+        <summary>Partager avec l’autre parent</summary>
+        <div class="in">
+          <p>Toute personne qui ouvre ce lien peut cocher et modifier les jours. Envoyez-le uniquement à l’autre parent.</p>
+          <input id="shareLink" type="text" readonly aria-label="Lien à partager">
+          <div class="row2"><button class="btn" id="copyLink" type="button">Copier le lien</button></div>
+          <button class="linkbtn" id="resetCfg" type="button">Changer de base de données</button>
+        </div>
+      </details>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  var SEED = {"2026-01-01":"caroline","2026-01-02":"caroline","2026-01-03":"caroline","2026-01-04":"caroline","2026-01-10":"bruce","2026-01-11":"bruce","2026-01-17":"caroline","2026-01-18":"caroline","2026-01-24":"bruce","2026-01-25":"bruce","2026-01-31":"caroline","2026-02-01":"caroline","2026-02-07":"bruce","2026-02-08":"bruce","2026-02-14":"caroline","2026-02-15":"caroline","2026-02-16":"bruce","2026-02-17":"bruce","2026-02-18":"bruce","2026-02-19":"bruce","2026-02-20":"bruce","2026-02-21":"bruce","2026-02-22":"bruce","2026-02-28":"caroline","2026-03-01":"caroline","2026-03-07":"bruce","2026-03-08":"bruce","2026-03-14":"caroline","2026-03-15":"caroline","2026-03-21":"bruce","2026-03-22":"bruce","2026-03-28":"caroline","2026-03-29":"caroline","2026-04-03":"bruce","2026-04-04":"bruce","2026-04-05":"bruce","2026-04-06":"caroline","2026-04-07":"caroline","2026-04-08":"caroline","2026-04-09":"caroline","2026-04-10":"caroline","2026-04-11":"caroline","2026-04-12":"caroline","2026-04-13":"bruce","2026-04-14":"bruce","2026-04-15":"bruce","2026-04-16":"bruce","2026-04-17":"bruce","2026-04-18":"bruce","2026-04-19":"bruce","2026-04-25":"caroline","2026-04-26":"caroline","2026-05-02":"bruce","2026-05-03":"bruce","2026-05-09":"caroline","2026-05-10":"caroline","2026-05-14":"bruce","2026-05-15":"bruce","2026-05-16":"bruce","2026-05-17":"bruce","2026-05-23":"caroline","2026-05-24":"caroline","2026-05-25":"caroline","2026-05-30":"bruce","2026-05-31":"bruce","2026-06-06":"caroline","2026-06-07":"caroline","2026-06-13":"bruce","2026-06-14":"bruce","2026-06-20":"caroline","2026-06-21":"caroline","2026-06-27":"bruce","2026-06-28":"bruce","2026-06-29":"bruce","2026-06-30":"bruce","2026-07-01":"bruce","2026-07-02":"bruce","2026-07-03":"bruce","2026-07-04":"bruce","2026-07-05":"bruce","2026-07-06":"bruce","2026-07-07":"bruce","2026-07-08":"bruce","2026-07-09":"bruce","2026-07-10":"caroline","2026-07-11":"caroline","2026-07-12":"caroline","2026-07-13":"caroline","2026-07-14":"caroline","2026-07-15":"caroline","2026-07-16":"caroline","2026-07-17":"caroline","2026-07-18":"caroline","2026-07-19":"caroline","2026-07-20":"bruce","2026-07-21":"bruce","2026-07-22":"bruce","2026-07-23":"bruce","2026-07-24":"bruce","2026-07-25":"bruce","2026-07-26":"bruce","2026-07-27":"bruce","2026-07-28":"bruce","2026-07-29":"bruce","2026-07-30":"bruce","2026-07-31":"bruce","2026-08-01":"bruce","2026-08-02":"caroline","2026-08-03":"caroline","2026-08-04":"caroline","2026-08-05":"caroline","2026-08-06":"caroline","2026-08-07":"caroline","2026-08-08":"caroline","2026-08-09":"caroline","2026-08-10":"caroline","2026-08-11":"caroline","2026-08-12":"caroline","2026-08-13":"caroline","2026-08-14":"caroline","2026-08-15":"caroline","2026-08-16":"caroline","2026-08-22":"bruce","2026-08-23":"bruce","2026-08-29":"caroline","2026-08-30":"caroline","2026-09-05":"bruce","2026-09-06":"bruce","2026-09-12":"caroline","2026-09-13":"caroline","2026-09-19":"bruce","2026-09-20":"bruce","2026-09-21":"bruce","2026-09-25":"caroline","2026-09-26":"caroline","2026-09-27":"caroline","2026-09-28":"caroline","2026-10-03":"bruce","2026-10-04":"bruce","2026-10-10":"caroline","2026-10-11":"caroline","2026-10-12":"caroline","2026-10-13":"caroline","2026-10-14":"caroline","2026-10-15":"caroline","2026-10-16":"caroline","2026-10-17":"bruce","2026-10-18":"bruce","2026-10-19":"bruce","2026-10-20":"bruce","2026-10-21":"bruce","2026-10-22":"bruce","2026-10-23":"bruce","2026-10-24":"caroline","2026-10-25":"caroline","2026-10-31":"bruce","2026-11-01":"bruce","2026-11-07":"caroline","2026-11-08":"caroline","2026-11-14":"bruce","2026-11-15":"bruce","2026-11-21":"caroline","2026-11-22":"caroline","2026-11-28":"bruce","2026-11-29":"bruce","2026-12-05":"caroline","2026-12-06":"caroline","2026-12-12":"bruce","2026-12-13":"bruce","2026-12-19":"caroline","2026-12-20":"caroline","2026-12-24":"caroline","2026-12-25":"caroline","2026-12-26":"caroline","2026-12-27":"caroline","2026-12-28":"caroline","2026-12-29":"bruce","2026-12-30":"bruce","2026-12-31":"bruce"};
+  var START = '2026-01-01';
+  var END = '2026-12-31';
+  var MONTHS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  var DAYS = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+  var RULES = JSON.stringify({
+    rules: {
+      rooms: {
+        '$room': {
+          '.read': true,
+          '.write': true,
+          jours: {
+            '$jour': {
+              '.validate': "newData.isString() && (newData.val() == 'bruce' || newData.val() == 'caroline')"
+            }
+          }
+        }
+      }
+    }
+  }, null, 2);
+
+  /* Calendrier scolaire et jours fériés du canton de Vaud pour 2026 (source : vd.ch, vacances scolaires 2023-2031). */
+  var HOLIDAYS = {
+    '2026-01-01': 'Nouvel An',
+    '2026-01-02': '2 janvier',
+    '2026-04-03': 'Vendredi saint',
+    '2026-04-06': 'Lundi de Pâques',
+    '2026-05-14': 'Ascension',
+    '2026-05-15': 'Pont de l’Ascension',
+    '2026-05-25': 'Lundi de Pentecôte',
+    '2026-08-01': 'Fête nationale',
+    '2026-09-21': 'Jeûne fédéral',
+    '2026-12-25': 'Noël'
+  };
+  var VACANCES = [
+    ['2026-01-01', '2026-01-04', 'Vacances d’hiver'],
+    ['2026-02-14', '2026-02-22', 'Relâches'],
+    ['2026-04-03', '2026-04-19', 'Vacances de Pâques'],
+    ['2026-06-27', '2026-08-16', 'Vacances d’été'],
+    ['2026-10-10', '2026-10-25', 'Vacances d’automne'],
+    ['2026-12-24', '2026-12-31', 'Vacances d’hiver']
+  ];
+  function offReason(date) {
+    if (HOLIDAYS[date]) return HOLIDAYS[date];
+    for (var k = 0; k < VACANCES.length; k++) {
+      if (date >= VACANCES[k][0] && date <= VACANCES[k][1]) return VACANCES[k][2];
+    }
+    return '';
+  }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function iso(y, m, d) { return y + '-' + pad(m + 1) + '-' + pad(d); }
+  function dow(s) { var p = s.split('-').map(Number); return new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay(); }
+  function plural(n, one, many) { return n + ' ' + (n > 1 ? many : one); }
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  var now = new Date();
+  var TODAY = iso(now.getFullYear(), now.getMonth(), now.getDate());
+  var month = TODAY < START ? 0 : (TODAY > END ? 11 : now.getMonth());
+
+  var cfg = null;
+  var docs = {};
+  var pending = new Map();
+  var loaded = false;
+  var es = null;
+  var pollTimer = null;
+  var resetArmed = false;
+
+  /* ---------- configuration ---------- */
+  function validDb(u) { return /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.(firebasedatabase\.app|firebaseio\.com)$/i.test(u); }
+  function validRoom(r) { return /^[a-z0-9]{8,40}$/.test(r); }
+  function cleanDb(u) { return String(u || '').trim().replace(/\/+$/, ''); }
+  function saveCfg(c) { try { localStorage.setItem('garde_cfg', JSON.stringify(c)); } catch (e) { /* stockage indisponible */ } }
+  function loadCfg() {
+    try {
+      var q = new URLSearchParams(location.search);
+      var db = cleanDb(q.get('db')), room = (q.get('room') || '').trim();
+      if (validDb(db) && validRoom(room)) { var c = { db: db, room: room }; saveCfg(c); return c; }
+    } catch (e) { /* adresse sans paramètres */ }
+    try {
+      var s = JSON.parse(localStorage.getItem('garde_cfg'));
+      if (s && validDb(s.db) && validRoom(s.room)) return s;
+    } catch (e) { /* rien d'enregistré */ }
+    return null;
+  }
+  function newRoom() {
+    var a = new Uint8Array(12);
+    crypto.getRandomValues(a);
+    return Array.prototype.map.call(a, function (b) { return (b % 36).toString(36); }).join('');
+  }
+  function base() { return cfg.db + '/rooms/' + cfg.room + '/jours'; }
+  function dayUrl(date) { return base() + '/' + date + '.json'; }
+  function shareUrl() {
+    return location.origin + location.pathname + '?db=' + encodeURIComponent(cfg.db) + '&room=' + cfg.room;
+  }
+
+  /* ---------- affichage ---------- */
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.hidden = false;
+    clearTimeout(toast.t);
+    toast.t = setTimeout(function () { t.hidden = true; }, 4000);
+  }
+  function setStatus(kind, text) {
+    $('status').className = 'status ' + kind;
+    $('statusText').textContent = text;
+  }
+  function showBanner(text) {
+    var b = $('banner');
+    b.hidden = !text;
+    b.textContent = text || '';
+  }
+  function copyText(text, input) {
+    function fallback() { try { input.focus(); input.select(); } catch (e) { /* rien */ } toast('Texte sélectionné : copiez-le avec Ctrl+C.'); }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { toast('Copié.'); }, fallback);
+      } else fallback();
+    } catch (e) { fallback(); }
+  }
+
+  function whoOf(date) { var w = docs[date]; return w === 'bruce' || w === 'caroline' ? w : ''; }
+  function count(from, to) {
+    var b = 0, c = 0;
+    Object.keys(docs).forEach(function (date) {
+      if (date < from || date > to) return;
+      if (docs[date] === 'bruce') b++;
+      else if (docs[date] === 'caroline') c++;
+    });
+    return { b: b, c: c };
+  }
+  function unsetUntilToday() {
+    var n = 0;
+    for (var m = 0; m < 12; m++) {
+      var last = new Date(Date.UTC(2026, m + 1, 0)).getUTCDate();
+      for (var d = 1; d <= last; d++) {
+        var date = iso(2026, m, d);
+        if (date <= TODAY && !whoOf(date)) n++;
+      }
+    }
+    return n;
+  }
+
+  function renderCounters() {
+    if (!loaded) {
+      $('nB').textContent = '–';
+      $('nC').textContent = '–';
+      $('diff').textContent = 'Chargement des données…';
+      $('todo').textContent = '';
+      return;
+    }
+    var s = count(START, END);
+    $('nB').textContent = s.b;
+    $('nC').textContent = s.c;
+    var total = s.b + s.c;
+    var bar = $('bar').children;
+    bar[0].style.width = total ? (s.b / total * 100) + '%' : '0';
+    bar[1].style.width = total ? (s.c / total * 100) + '%' : '0';
+    var diff = s.b - s.c;
+    $('diff').textContent = diff === 0 ? 'Autant de jours chacun' : (diff > 0 ? 'Bruce a ' : 'Caroline a ') + plural(Math.abs(diff), 'jour', 'jours') + ' de plus';
+    var todo = unsetUntilToday();
+    $('todo').textContent = todo ? plural(todo, 'jour', 'jours') + ' passé' + (todo > 1 ? 's' : '') + ' à renseigner' : 'Tous les jours passés sont renseignés';
+  }
+
+  function dayRow(date) {
+    var wd = dow(date);
+    var who = whoOf(date);
+    var weekend = wd === 0 || wd === 6;
+    var reason = offReason(date);
+    var school = !weekend && !reason;
+    var row = el('div', 'row ' + (school ? 'school' : 'off') + (date === TODAY ? ' today' : ''));
+    var dt = el('div', 'date');
+    dt.appendChild(el('small', null, DAYS[wd].slice(0, 3) + '.'));
+    dt.appendChild(el('b', null, String(+date.slice(8))));
+    row.appendChild(dt);
+
+    var inf = el('div', 'info');
+    inf.appendChild(el('span', null, DAYS[wd]));
+    if (reason) inf.appendChild(el('span', 'chip', reason));
+    if (date === TODAY) inf.appendChild(el('span', 'chip now', 'Aujourd’hui'));
+    else if (!who && date < TODAY) inf.appendChild(el('span', 'chip warn', 'À renseigner'));
+    row.appendChild(inf);
+
+    var seg = el('div', 'seg');
+    seg.setAttribute('role', 'group');
+    seg.setAttribute('aria-label', 'Garde du ' + date);
+    [['bruce', 'Bruce', 'b'], ['caroline', 'Caroline', 'c']].forEach(function (p) {
+      var btn = el('button', p[2], p[1]);
+      btn.type = 'button';
+      btn.setAttribute('aria-pressed', who === p[0] ? 'true' : 'false');
+      btn.disabled = pending.has(date);
+      btn.addEventListener('click', function () { setWho(date, p[0]); });
+      seg.appendChild(btn);
+    });
+    row.appendChild(seg);
+    return row;
+  }
+
+  function renderList() {
+    var list = $('list');
+    list.textContent = '';
+    $('monthLabel').textContent = MONTHS[month] + ' 2026';
+    $('prev').disabled = month === 0;
+    $('next').disabled = month === 11;
+    var last = new Date(Date.UTC(2026, month + 1, 0)).getUTCDate();
+    if (loaded) {
+      var s = count(iso(2026, month, 1), iso(2026, month, last));
+      $('monthStat').textContent = 'Ce mois : Bruce ' + s.b + ' · Caroline ' + s.c;
+    } else {
+      $('monthStat').textContent = '';
+    }
+    for (var d = 1; d <= last; d++) list.appendChild(dayRow(iso(2026, month, d)));
+  }
+
+  function renderSeed() {
+    var box = $('seedBox');
+    var n = Object.keys(SEED).length;
+    var empty = loaded && Object.keys(docs).length === 0 && n > 0;
+    box.hidden = !empty;
+    if (empty) $('seedText').textContent = 'Le compteur est vide. Importer les ' + n + ' jours déjà cochés avant la mise en ligne ?';
+  }
+
+  function render() {
+    renderCounters();
+    renderList();
+    renderSeed();
+  }
+
+  /* ---------- données ---------- */
+  function overlayPending() {
+    pending.forEach(function (val, date) {
+      if (val) docs[date] = val; else delete docs[date];
+    });
+  }
+  function applyPut(path, data) {
+    if (path === '/') {
+      docs = {};
+      if (data && typeof data === 'object') Object.keys(data).forEach(function (k) { docs[k] = data[k]; });
+    } else {
+      var key = path.slice(1);
+      if (key.indexOf('/') !== -1) return;
+      if (data === null) delete docs[key]; else docs[key] = data;
+    }
+    overlayPending();
+  }
+  function applyPatch(path, data) {
+    if (path !== '/' || !data || typeof data !== 'object') return;
+    Object.keys(data).forEach(function (k) {
+      if (data[k] === null) delete docs[k]; else docs[k] = data[k];
+    });
+    overlayPending();
+  }
+  function onLive() {
+    loaded = true;
+    showBanner('');
+    setStatus('on', 'Synchronisé en direct');
+    render();
+  }
+
+  async function refresh() {
+    if (!cfg) return;
+    try {
+      var r = await fetch(base() + '.json', { cache: 'no-store' });
+      if (!r.ok) throw new Error(String(r.status));
+      var data = await r.json();
+      applyPut('/', data);
+      onLive();
+    } catch (e) {
+      setStatus('off', 'Hors connexion');
+      if (!loaded) showBanner('Impossible de joindre la base de données. Vérifiez la connexion et les règles Firebase.');
+    }
+  }
+
+  function startStream() {
+    if (es) { es.close(); es = null; }
+    if (!window.EventSource) return;
+    try {
+      es = new EventSource(base() + '.json');
+      es.addEventListener('put', function (ev) {
+        try { var m = JSON.parse(ev.data); applyPut(m.path, m.data); onLive(); } catch (e) { /* message ignoré */ }
+      });
+      es.addEventListener('patch', function (ev) {
+        try { var m = JSON.parse(ev.data); applyPatch(m.path, m.data); onLive(); } catch (e) { /* message ignoré */ }
+      });
+    } catch (e) { es = null; }
+  }
+
+  async function setWho(date, who) {
+    if (!cfg || pending.has(date)) return;
+    var prev = whoOf(date);
+    var next = prev === who ? '' : who;
+    pending.set(date, next);
+    overlayPending();
+    render();
+    try {
+      var r = next
+        ? await fetch(dayUrl(date), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(next) })
+        : await fetch(dayUrl(date), { method: 'DELETE' });
+      if (!r.ok) throw new Error(String(r.status));
+    } catch (e) {
+      pending.delete(date);
+      if (prev) docs[date] = prev; else delete docs[date];
+      toast(String(e && e.message) === '401' || String(e && e.message) === '403'
+        ? 'Accès refusé : vérifiez les règles Firebase.'
+        : 'Modification non enregistrée. Réessayez.');
+      render();
+      return;
+    }
+    pending.delete(date);
+    render();
+  }
+
+  async function importSeed() {
+    var btn = $('seedBtn');
+    btn.disabled = true;
+    try {
+      var r = await fetch(base() + '.json', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(SEED) });
+      if (!r.ok) throw new Error(String(r.status));
+      Object.keys(SEED).forEach(function (k) { docs[k] = SEED[k]; });
+      toast('Jours importés.');
+    } catch (e) {
+      toast('Import impossible. Vérifiez les règles Firebase.');
+    }
+    btn.disabled = false;
+    render();
+  }
+
+  /* ---------- démarrage ---------- */
+  function showApp() {
+    $('setup').hidden = true;
+    $('app').hidden = false;
+    $('shareLink').value = shareUrl();
+    setStatus('', 'Connexion…');
+    render();
+    refresh();
+    startStream();
+    clearInterval(pollTimer);
+    pollTimer = setInterval(refresh, 15000);
+  }
+  function showSetup() {
+    $('app').hidden = true;
+    $('setup').hidden = false;
+    $('rules').value = RULES;
+    setStatus('', 'Non configuré');
+  }
+
+  async function onSave() {
+    var err = $('setupErr');
+    err.hidden = true;
+    var db = cleanDb($('dbUrl').value);
+    if (!validDb(db)) {
+      err.hidden = false;
+      err.textContent = 'Cette adresse ne ressemble pas à une base Firebase. Elle commence par https:// et se termine par firebasedatabase.app.';
+      return;
+    }
+    var c = { db: db, room: newRoom() };
+    var btn = $('saveCfg');
+    btn.disabled = true;
+    try {
+      var r = await fetch(c.db + '/rooms/' + c.room + '/jours.json', { cache: 'no-store' });
+      if (!r.ok) throw new Error(String(r.status));
+    } catch (e) {
+      err.hidden = false;
+      err.textContent = 'Connexion impossible. Vérifiez l’adresse et que les règles ont bien été publiées dans Firebase.';
+      btn.disabled = false;
+      return;
+    }
+    btn.disabled = false;
+    cfg = c;
+    saveCfg(c);
+    showApp();
+    $('shareBox').open = true;
+  }
+
+  $('prev').addEventListener('click', function () { if (month > 0) { month--; renderList(); } });
+  $('next').addEventListener('click', function () { if (month < 11) { month++; renderList(); } });
+  $('copyRules').addEventListener('click', function () { copyText(RULES, $('rules')); });
+  $('copyLink').addEventListener('click', function () { copyText($('shareLink').value, $('shareLink')); });
+  $('saveCfg').addEventListener('click', onSave);
+  $('seedBtn').addEventListener('click', importSeed);
+  $('resetCfg').addEventListener('click', function () {
+    var b = $('resetCfg');
+    if (!resetArmed) {
+      resetArmed = true;
+      b.textContent = 'Cliquez encore pour confirmer';
+      setTimeout(function () { resetArmed = false; b.textContent = 'Changer de base de données'; }, 4000);
+      return;
+    }
+    resetArmed = false;
+    b.textContent = 'Changer de base de données';
+    try { localStorage.removeItem('garde_cfg'); } catch (e) { /* rien */ }
+    if (es) { es.close(); es = null; }
+    clearInterval(pollTimer);
+    cfg = null; docs = {}; loaded = false;
+    showSetup();
+  });
+
+  cfg = loadCfg();
+  if (cfg) showApp(); else showSetup();
+})();
+</script>
+</body>
+</html>
